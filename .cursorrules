@@ -1,0 +1,35 @@
+# THE MARKETING REBOOT - Cursor Rules
+
+## CRITICAL CONVENTIONS
+- NO EMOJIS in code - use Lucide React icons only
+- Every page component must include: ExclusiveHeader, ParticleSystem
+- Use Lightning Bolt theme variables: --bg-primary, --text-primary, etc.
+- Components use: glass-card, btn-primary, gradient-text classes
+- Mobile-first responsive design with Tailwind CSS
+- TypeScript strict mode - no 'any' types
+- Ensure all spacing and headers are correct
+- Website first needs to load in lightmode users will need to switch it to dark but it should remain throughout their entire session
+
+## TECH STACK
+- Next.js 14 App Router
+- TypeScript
+- Tailwind CSS
+- Supabase (auth & database)
+- Lucide React (icons only, no emojis)
+
+## USER ROLES
+- Contributors: Invite-only, verified badge, full profiles
+- Readers: Open signup, follow/save features, no public profile
+
+## DATABASE UPDATES NEEDED
+- profiles.user_role: 'contributor' | 'reader'
+- profiles.is_verified: boolean
+- profiles.verified_date: timestamp
+- New saved_posts table: user_id, post_id, saved_at
+
+## IMMEDIATE PRIORITIES
+1. Fix auth persistence issue
+2. Add user role system
+3. Contributor interest form (floating button)
+4. Reader-specific features (follow/unfollow)
+5. CMS for contributors only
