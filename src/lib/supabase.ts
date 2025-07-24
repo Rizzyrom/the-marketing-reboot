@@ -1,6 +1,7 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Database } from '@/types/supabase'
 
-export const supabase = createClientComponentClient()
+export const supabase = createClientComponentClient<Database>()
 
 export type Profile = {
   id: string
@@ -29,6 +30,7 @@ export type Profile = {
   // NEW FIELDS FOR TWO-TIER SYSTEM
   user_role: 'contributor' | 'reader'
   is_verified: boolean | null
+  is_admin: boolean | null  // ADDED THIS LINE
   verified_date: string | null
   contributor_status: string | null
   contributor_tier: string | null

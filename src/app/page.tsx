@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ExclusiveHeader from '@/components/ExclusiveHeader'
-import { ArrowRight, Zap, Sparkles, TrendingUp, Target, Brain, Palette, Hash, Users, MessageSquare, Lightbulb, Rocket, Globe, Cpu, Eye, PenTool, BarChart3, Search, Clock, Heart, Bookmark, Share } from 'lucide-react'
+import ParticleSystem from '@/components/ParticleSystem'
+import { useAuth } from '@/contexts/AuthContext'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { ArrowRight, Zap, Sparkles, TrendingUp, Target, Brain, Palette, Hash, Users, MessageSquare, Lightbulb, Rocket, Globe, Cpu, Eye, PenTool, BarChart3, Search, Clock, Heart, Bookmark, Share, UserPlus, UserMinus } from 'lucide-react'
 
-// Enhanced topic data for sidebar
+// [Keep your existing constants - topics, bannerMessages]
 const topics = [
   {
     id: 'brand-creative',
@@ -77,102 +80,243 @@ const bannerMessages = [
   'A new kind of marketing club—smarter, sharper, evolved.'
 ]
 
-// Featured posts with varied layouts
-const featuredPosts = [
-  {
-    id: 1,
-    layout: 'large',
-    author: {
-      name: 'Sarah Zhang',
-      title: 'VP Growth @ Stripe',
-      avatar: 'SZ'
-    },
-    type: 'Strategy Reboot',
-    title: 'How We Killed Our Attribution Model and Built Something That Actually Works',
-    excerpt: 'Spent 8 months proving that multi-touch attribution is mostly BS for our business. Ripped out the complex tracking systems and built a simple framework that actually correlates with revenue.',
-    engagement: {
-      likes: '2.1K',
-      comments: '384',
-      time: '2 hours ago'
-    },
-    featured: true
-  },
-  {
-    id: 2,
-    layout: 'square',
-    author: {
-      name: 'Marcus Chen',
-      title: 'Brand Director @ Notion',
-      avatar: 'MC'
-    },
-    type: 'Brand Reboot',
-    title: 'Building a Brand That Builds Itself',
-    excerpt: 'Community-led growth isn\'t just a buzzword. It\'s the future of sustainable marketing.',
-    engagement: {
-      likes: '1.8K',
-      comments: '267',
-      time: '4 hours ago'
+// Enhanced Post type with follow functionality
+interface Post {
+  id: string
+  layout?: 'large' | 'square' | 'horizontal'
+  author: {
+    id: string
+    name: string
+    title: string
+    avatar: string
+    isFollowing?: boolean
+  }
+  type: string
+  title: string
+  excerpt: string
+  engagement: {
+    likes: string
+    comments: string
+    time: string
+  }
+  featured?: boolean
+}
+
+// Follow Button Component
+const FollowButton = ({ authorId, isFollowing: initialIsFollowing, onFollowChange }: { 
+  authorId: string; 
+  isFollowing: boolean;
+  onFollowChange?: (authorId: string, isFollowing: boolean) => void;
+}) => {
+  const { user } = useAuth()
+  const supabase = createClientComponentClient()
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
+  const [loading, setLoading] = useState(false)
+
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    
+    if (!user) {
+      window.location.href = '/auth/login'
+      return
     }
-  },
-  {
-    id: 3,
-    layout: 'square',
-    author: {
-      name: 'Elena Rodriguez',
-      title: 'Head of Growth @ Shopify',
-      avatar: 'ER'
-    },
-    type: 'Growth Reboot',
-    title: 'The AI Marketing Stack That Actually Works',
-    excerpt: 'Cut through the AI hype and built a practical tech stack that works.',
-    engagement: {
-      likes: '3.2K',
-      comments: '489',
-      time: '6 hours ago'
-    }
-  },
-  {
-    id: 4,
-    layout: 'horizontal',
-    author: {
-      name: 'David Kim',
-      title: 'CMO @ Tesla',
-      avatar: 'DK'
-    },
-    type: 'Strategy Reboot',
-    title: 'Why We Stopped All Traditional Advertising',
-    excerpt: 'Tesla\'s unconventional approach to marketing that built a $1T company without spending a penny on ads. Here\'s the complete framework.',
-    engagement: {
-      likes: '4.5K',
-      comments: '672',
-      time: '8 hours ago'
-    }
-  },
-  {
-    id: 5,
-    layout: 'horizontal',
-    author: {
-      name: 'Lisa Park',
-      title: 'VP Marketing @ Airbnb',
-      avatar: 'LP'
-    },
-    type: 'Growth Reboot',
-    title: 'How We Built Trust with Complete Strangers',
-    excerpt: 'The psychology behind getting people to stay in strangers\' homes and the marketing tactics that made it mainstream.',
-    engagement: {
-      likes: '2.9K',
-      comments: '341',
-      time: '12 hours ago'
+
+    setLoading(true)
+    
+    try {
+      if (isFollowing) {
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', authorId)
+      } else {
+        await supabase
+          .from('follows')
+          .insert({
+            follower_id: user.id,
+            following_id: authorId
+          })
+      }
+      
+      setIsFollowing(!isFollowing)
+      onFollowChange?.(authorId, !isFollowing)
+    } catch (error) {
+      console.error('Error toggling follow:', error)
+    } finally {
+      setLoading(false)
     }
   }
-]
+
+  return (
+    <button
+      onClick={handleFollow}
+      disabled={loading}
+      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+        isFollowing 
+          ? 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300' 
+          : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
+      }`}
+    >
+      {loading ? '...' : (
+        <>
+          {isFollowing ? (
+            <>
+              <UserMinus className="w-3 h-3 inline mr-1" />
+              Following
+            </>
+          ) : (
+            <>
+              <UserPlus className="w-3 h-3 inline mr-1" />
+              Follow
+            </>
+          )}
+        </>
+      )}
+    </button>
+  )
+}
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true)
-  const [email, setEmail] = useState('') 
+  const [email, setEmail] = useState('')
+  const { user } = useAuth()
+  const supabase = createClientComponentClient()
+  const [feedPosts, setFeedPosts] = useState<Post[]>([])
+  const [isLoadingFeed, setIsLoadingFeed] = useState(true)
+  const [followedAuthors, setFollowedAuthors] = useState<Set<string>>(new Set())
+
+  // Fetch personalized feed
+  useEffect(() => {
+    const loadFeed = async () => {
+      setIsLoadingFeed(true)
+      
+      try {
+        if (!user) {
+          // Not logged in - show latest posts
+          const { data } = await supabase
+            .from('posts')
+            .select('*, profiles!author_id(*)')
+            .eq('published', true)
+            .order('created_at', { ascending: false })
+            .limit(10)
+          
+          const posts: Post[] = data?.map(post => ({
+            id: post.id,
+            layout: 'horizontal' as 'horizontal',
+            author: {
+              id: post.profiles?.id || '',
+              name: post.profiles?.full_name || 'Unknown',
+              title: post.profiles?.job_title || 'Contributor',
+              avatar: post.profiles?.full_name?.charAt(0).toUpperCase() || 'U',
+              isFollowing: false
+            },
+            type: post.post_type || 'Strategy Reboot',
+            title: post.title,
+            excerpt: post.excerpt || '',
+            engagement: {
+              likes: post.likes_count?.toString() || '0',
+              comments: post.comments_count?.toString() || '0',
+              time: new Date(post.created_at).toLocaleString()
+            },
+            featured: post.featured
+          })) || []
+          
+          setFeedPosts(posts)
+        } else {
+          // Logged in - get followed authors
+          const { data: followingData } = await supabase
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', user.id)
+          
+          const followedIds = followingData?.map(f => f.following_id) || []
+          setFollowedAuthors(new Set(followedIds))
+          
+          let posts: any[] = []
+          
+          if (followedIds.length > 0) {
+            // Get posts from followed contributors
+            const { data: followedPosts } = await supabase
+              .from('posts')
+              .select('*, profiles!author_id(*)')
+              .in('author_id', followedIds)
+              .eq('published', true)
+              .order('created_at', { ascending: false })
+              .limit(10)
+            
+            posts = followedPosts || []
+          }
+          
+          // If not enough posts, supplement with recent posts
+          if (posts.length < 5) {
+            const { data: recentPosts } = await supabase
+              .from('posts')
+              .select('*, profiles!author_id(*)')
+              .eq('published', true)
+              .not('author_id', 'in', `(${followedIds.join(',')})`)
+              .order('created_at', { ascending: false })
+              .limit(10 - posts.length)
+            
+            posts = [...posts, ...(recentPosts || [])]
+          }
+          
+          // Transform posts
+          const transformedPosts: Post[] = posts.map((post, index) => ({
+            id: post.id,
+            layout: (index === 0 ? 'large' : index < 3 ? 'square' : 'horizontal') as 'large' | 'square' | 'horizontal',
+            author: {
+              id: post.profiles?.id || '',
+              name: post.profiles?.full_name || 'Unknown',
+              title: post.profiles?.job_title || 'Contributor',
+              avatar: post.profiles?.full_name?.charAt(0).toUpperCase() || 'U',
+              isFollowing: followedIds.includes(post.profiles?.id)
+            },
+            type: post.post_type || 'Strategy Reboot',
+            title: post.title,
+            excerpt: post.excerpt || '',
+            engagement: {
+              likes: post.likes_count?.toString() || '0',
+              comments: post.comments_count?.toString() || '0',
+              time: new Date(post.created_at).toLocaleString()
+            },
+            featured: post.featured
+          }))
+          
+          setFeedPosts(transformedPosts)
+        }
+      } catch (error) {
+        console.error('Error loading feed:', error)
+      } finally {
+        setIsLoadingFeed(false)
+      }
+    }
+    
+    loadFeed()
+  }, [user, supabase])
+
+  // Update follow status in posts when changed
+  const handleFollowChange = (authorId: string, isFollowing: boolean) => {
+    setFeedPosts(prev => prev.map(post => 
+      post.author.id === authorId 
+        ? { ...post, author: { ...post.author, isFollowing } }
+        : post
+    ))
+    
+    if (isFollowing) {
+      setFollowedAuthors(prev => new Set([...prev, authorId]))
+    } else {
+      setFollowedAuthors(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(authorId)
+        return newSet
+      })
+    }
+  }
 
   useEffect(() => {
-    // ENHANCED PARTICLES SYSTEM - More particles for better density
+    // [Keep your existing particle system effect]
     const createParticle = () => {
       const particle = document.createElement('div')
       particle.style.position = 'absolute'
@@ -185,7 +329,6 @@ export default function HomePage() {
       particle.style.animationTimingFunction = 'linear'
       particle.style.animationIterationCount = '1'
       
-      // Different particle types with brand colors and glow effects
       const particleTypes = [
         { bg: '#1E40AF', size: '3px', opacity: '0.7', shadow: '0 0 8px #1E40AF' },
         { bg: '#3B82F6', size: '2px', opacity: '0.6', shadow: '0 0 6px #3B82F6' },
@@ -205,7 +348,6 @@ export default function HomePage() {
       particle.style.opacity = type.opacity
       particle.style.boxShadow = type.shadow
       
-      // Add horizontal sway to 30% of particles
       if (Math.random() < 0.3) {
         particle.style.animationName = 'floatUp, sway'
         particle.style.animationDuration = `${(Math.random() * 4 + 6)}s, ${(Math.random() * 2 + 3)}s`
@@ -223,15 +365,12 @@ export default function HomePage() {
       }
     }
 
-    // Create particles more frequently for better density
-    const particlesInterval = setInterval(createParticle, 200) // Double density
+    const particlesInterval = setInterval(createParticle, 200)
     
-    // Initialize with more particles
-    for (let i = 0; i < 50; i++) { // Double initial particles
+    for (let i = 0; i < 50; i++) {
       setTimeout(createParticle, i * 40)
     }
 
-    // Loading state - 0.75s
     const timer = setTimeout(() => {
       setLoading(false)
     }, 750)
@@ -248,11 +387,11 @@ export default function HomePage() {
     setEmail('')
   }
 
+  // [Keep your existing loading screen]
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-primary transition-colors duration-500">
         <div className="text-center">
-          {/* FIXED: Properly sized Lightning Bolt with theme support */}
           <div className="relative mb-12 w-40 h-48 mx-auto flex items-center justify-center overflow-visible">
             <svg 
               className="w-32 h-40" 
@@ -351,17 +490,15 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-primary transition-colors duration-500">
-      {/* WORKING PARTICLES CONTAINER */}
+    <main className="min-h-screen bg-primary transition-colors duration-500 pt-16">
       <div className="particles-container fixed inset-0 pointer-events-none z-10"></div>
       
       <ExclusiveHeader />
       
-      {/* FIXED: Animated Banner - Perfect positioning and seamless repeating scroll */}
-      <div className="fixed top-20 left-0 right-0 z-30 bg-gradient-to-r from-blue-600 via-purple-600 to-green-500 text-white py-4 overflow-hidden">
+      {/* Animated Banner */}
+      <div className="fixed top-16 left-0 right-0 z-30 bg-gradient-to-r from-blue-600 via-purple-600 to-green-500 text-white py-2 overflow-hidden">
         <div className="flex items-center h-full">
           <div className="whitespace-nowrap animate-scroll flex items-center">
-            {/* Create enough repetitions for seamless loop */}
             {Array.from({ length: 8 }, (_, i) => 
               bannerMessages.map((message, index) => (
                 <span key={`${i}-${index}`} className="inline-block px-16 font-semibold text-lg">
@@ -373,14 +510,13 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ENHANCED: Hero Section - Fixed spacing and gradient text */}
-      <section className="relative pt-44 pb-12 px-4 sm:px-6 lg:px-8">
+      {/* Hero Section */}
+      <section className="relative pt-36 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto text-center">
           <div className="animate-fade-in">
             <h1 className="font-orbitron text-4xl sm:text-5xl lg:text-6xl font-black mb-4 leading-tight text-primary">
               Welcome to the
             </h1>
-            {/* FIXED: Marketing Reboot text with proper gradient and spacing */}
             <div className="font-orbitron text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black mb-8 leading-tight">
               <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-green-500 bg-clip-text text-transparent animate-gradient-text inline-block pb-2">
                 Marketing Reboot
@@ -405,174 +541,278 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* MAIN CONTENT: Two-column layout with perfect theme styling */}
+      {/* MAIN CONTENT: Updated with Your Feed */}
       <section className="py-8 px-4 sm:px-6 lg:px-8 relative z-20">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             
-            {/* LEFT: Posts Section - 3/4 width */}
+            {/* LEFT: Posts Section */}
             <div className="lg:col-span-3">
               <div className="flex items-center gap-3 mb-8">
-                <h2 className="font-orbitron text-2xl font-bold text-primary">Latest</h2>
-                <Zap className="w-6 h-6 text-brand-primary animate-pulse" />
+                <h2 className="font-orbitron text-2xl font-bold text-primary">
+                  {user ? 'Your Feed' : 'Latest'}
+                </h2>
+                {/* Animated lightning bolt matching the logo */}
+                <div className="relative w-6 h-8">
+                  <svg 
+                    className="w-6 h-8" 
+                    viewBox="0 0 100 120" 
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{ overflow: 'visible' }}
+                  >
+                    <defs>
+                      <linearGradient id="feedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style={{stopColor:'#1E40AF'}}>
+                          <animate attributeName="stop-color" 
+                                   values="#1E40AF;#3B82F6;#10B981;#32D74B;#6366F1;#8B5CF6;#1E40AF" 
+                                   dur="2s" repeatCount="indefinite"/>
+                        </stop>
+                        <stop offset="50%" style={{stopColor:'#10B981'}}>
+                          <animate attributeName="stop-color" 
+                                   values="#10B981;#32D74B;#6366F1;#8B5CF6;#1E40AF;#3B82F6;#10B981" 
+                                   dur="2s" repeatCount="indefinite"/>
+                        </stop>
+                        <stop offset="100%" style={{stopColor:'#8B5CF6'}}>
+                          <animate attributeName="stop-color" 
+                                   values="#8B5CF6;#1E40AF;#3B82F6;#10B981;#32D74B;#6366F1;#8B5CF6" 
+                                   dur="2s" repeatCount="indefinite"/>
+                        </stop>
+                      </linearGradient>
+                      <filter id="feedGlow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge>
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    
+                    <path 
+                      d="M 50 10 L 70 10 L 45 50 L 65 50 L 25 110 L 40 70 L 20 70 L 50 10 Z" 
+                      fill="url(#feedGradient)"
+                      filter="url(#feedGlow)"
+                    >
+                      <animateTransform
+                        attributeName="transform"
+                        type="scale"
+                        values="1;1.05;1"
+                        dur="2s"
+                        repeatCount="indefinite"
+                      />
+                    </path>
+                  </svg>
+                </div>
               </div>
               
-              <div className="space-y-6">
-                {/* Large Featured Post */}
-                {featuredPosts
-                  .filter(post => post.layout === 'large')
-                  .map(post => (
-                    <article key={post.id} className="post-card p-6 hover:border-brand-primary transition-all duration-300 group cursor-pointer relative shadow-lg hover:shadow-xl">
-                      {post.featured && (
-                        <div className="absolute top-6 right-6 bg-gradient-to-r from-green-400 to-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold animate-pulse">
-                          TRENDING
-                        </div>
-                      )}
-                      
-                      <div className="flex items-start gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center font-bold text-white shadow-lg">
-                          {post.author.avatar}
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-bold text-primary">{post.author.name}</div>
-                          <div className="text-secondary text-sm">{post.author.title}</div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button className="p-2 hover:surface-hover rounded-lg transition-colors">
-                            <Bookmark className="w-4 h-4 text-secondary" />
-                          </button>
-                          <button className="p-2 hover:surface-hover rounded-lg transition-colors">
-                            <Share className="w-4 h-4 text-secondary" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-semibold inline-block mb-4">
-                        {post.type}
-                      </div>
-                      
-                      <h3 className="font-orbitron text-xl font-bold mb-3 group-hover:text-brand-primary transition-colors text-primary">
-                        {post.title}
-                      </h3>
-                      
-                      <p className="text-secondary mb-6 leading-relaxed">
-                        {post.excerpt}
-                      </p>
-                      
-                      <div className="flex justify-between items-center pt-4 border-t surface-border">
-                        <div className="flex gap-4 text-sm text-muted">
-                          <span className="flex items-center gap-1 hover:text-red-500 transition-colors cursor-pointer">
-                            <Heart className="w-4 h-4" />
-                            {post.engagement.likes}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MessageSquare className="w-4 h-4" />
-                            {post.engagement.comments}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {post.engagement.time}
-                          </span>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-
-                {/* Square Posts Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {featuredPosts
-                    .filter(post => post.layout === 'square')
+              {/* Empty state for logged-in users with no follows */}
+              {user && feedPosts.length === 0 && !isLoadingFeed && (
+                <div className="glass-card p-12 text-center">
+                  <div className="mb-6">
+                    <Users className="w-16 h-16 mx-auto text-brand-primary animate-pulse" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-4 text-primary">Your feed is empty!</h3>
+                  <p className="text-secondary mb-8 max-w-md mx-auto">
+                    Follow contributors to see their posts here. Discover marketing leaders sharing breakthrough strategies.
+                  </p>
+                  <Link 
+                    href="/contributors" 
+                    className="inline-flex items-center gap-2 btn-primary"
+                  >
+                    <Users className="w-5 h-5" />
+                    Discover Contributors
+                    <ArrowRight className="w-5 h-5" />
+                  </Link>
+                </div>
+              )}
+              
+              {/* Show posts */}
+              {(isLoadingFeed || feedPosts.length > 0) && (
+                <div className="space-y-6">
+                  {/* Large Featured Post */}
+                  {feedPosts
+                    .filter(post => post.layout === 'large')
                     .map(post => (
-                      <article key={post.id} className="post-card p-6 hover:border-brand-primary transition-all duration-300 group cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-105">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center font-bold text-white text-sm">
+                      <article key={post.id} className="post-card p-6 hover:border-brand-primary transition-all duration-300 group cursor-pointer relative shadow-lg hover:shadow-xl">
+                        {post.featured && (
+                          <div className="absolute top-6 right-6 bg-gradient-to-r from-green-400 to-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+                            TRENDING
+                          </div>
+                        )}
+                        
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center font-bold text-white shadow-lg">
                             {post.author.avatar}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-primary text-sm truncate">{post.author.name}</div>
-                            <div className="text-secondary text-xs truncate">{post.author.title}</div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <div>
+                                <div className="font-bold text-primary">{post.author.name}</div>
+                                <div className="text-secondary text-sm">{post.author.title}</div>
+                              </div>
+                              {user && (
+                                <FollowButton 
+                                  authorId={post.author.id} 
+                                  isFollowing={post.author.isFollowing || false}
+                                  onFollowChange={handleFollowChange}
+                                />
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button className="p-2 hover:surface-hover rounded-lg transition-colors">
+                              <Bookmark className="w-4 h-4 text-secondary" />
+                            </button>
+                            <button className="p-2 hover:surface-hover rounded-lg transition-colors">
+                              <Share className="w-4 h-4 text-secondary" />
+                            </button>
                           </div>
                         </div>
                         
-                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-2 py-1 rounded text-xs font-semibold inline-block mb-3">
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-semibold inline-block mb-4">
                           {post.type}
                         </div>
                         
-                        <h3 className="font-orbitron text-lg font-bold mb-2 group-hover:text-brand-primary transition-colors text-primary line-clamp-2">
+                        <h3 className="font-orbitron text-xl font-bold mb-3 group-hover:text-brand-primary transition-colors text-primary">
                           {post.title}
                         </h3>
                         
-                        <p className="text-secondary text-sm mb-4 line-clamp-2">
+                        <p className="text-secondary mb-6 leading-relaxed">
                           {post.excerpt}
                         </p>
                         
-                        <div className="flex items-center gap-3 text-xs text-muted">
-                          <span className="flex items-center gap-1 hover:text-red-500 transition-colors cursor-pointer">
-                            <Heart className="w-3 h-3" />
-                            {post.engagement.likes}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MessageSquare className="w-3 h-3" />
-                            {post.engagement.comments}
-                          </span>
-                        </div>
-                      </article>
-                    ))}
-                </div>
-
-                {/* Horizontal Posts */}
-                <div className="space-y-4">
-                  {featuredPosts
-                    .filter(post => post.layout === 'horizontal')
-                    .map(post => (
-                      <article key={post.id} className="post-card p-6 hover:border-brand-primary transition-all duration-300 group cursor-pointer shadow-lg hover:shadow-xl">
-                        <div className="flex flex-col md:flex-row gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center font-bold text-white text-sm">
-                                {post.author.avatar}
-                              </div>
-                              <div>
-                                <div className="font-semibold text-primary text-sm">{post.author.name}</div>
-                                <div className="text-secondary text-xs">{post.author.title}</div>
-                              </div>
-                            </div>
-                            
-                            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-2 py-1 rounded text-xs font-semibold inline-block mb-3">
-                              {post.type}
-                            </div>
-                            
-                            <h3 className="font-orbitron text-lg font-bold mb-2 group-hover:text-brand-primary transition-colors text-primary">
-                              {post.title}
-                            </h3>
-                            
-                            <p className="text-secondary text-sm mb-4">
-                              {post.excerpt}
-                            </p>
-                            
-                            <div className="flex items-center gap-4 text-xs text-muted">
-                              <span className="flex items-center gap-1 hover:text-red-500 transition-colors cursor-pointer">
-                                <Heart className="w-3 h-3" />
-                                {post.engagement.likes}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <MessageSquare className="w-3 h-3" />
-                                {post.engagement.comments}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {post.engagement.time}
-                              </span>
-                            </div>
+                        <div className="flex justify-between items-center pt-4 border-t surface-border">
+                          <div className="flex gap-4 text-sm text-muted">
+                            <span className="flex items-center gap-1 hover:text-red-500 transition-colors cursor-pointer">
+                              <Heart className="w-4 h-4" />
+                              {post.engagement.likes}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MessageSquare className="w-4 h-4" />
+                              {post.engagement.comments}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {post.engagement.time}
+                            </span>
                           </div>
                         </div>
                       </article>
                     ))}
+
+                  {/* Square Posts Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {feedPosts
+                      .filter(post => post.layout === 'square')
+                      .map(post => (
+                        <article key={post.id} className="post-card p-6 hover:border-brand-primary transition-all duration-300 group cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-105">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center font-bold text-white text-sm">
+                              {post.author.avatar}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <div className="font-semibold text-primary text-sm truncate">{post.author.name}</div>
+                                {user && (
+                                  <FollowButton 
+                                    authorId={post.author.id} 
+                                    isFollowing={post.author.isFollowing || false}
+                                    onFollowChange={handleFollowChange}
+                                  />
+                                )}
+                              </div>
+                              <div className="text-secondary text-xs truncate">{post.author.title}</div>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-2 py-1 rounded text-xs font-semibold inline-block mb-3">
+                            {post.type}
+                          </div>
+                          
+                          <h3 className="font-orbitron text-lg font-bold mb-2 group-hover:text-brand-primary transition-colors text-primary line-clamp-2">
+                            {post.title}
+                          </h3>
+                          
+                          <p className="text-secondary text-sm mb-4 line-clamp-2">
+                            {post.excerpt}
+                          </p>
+                          
+                          <div className="flex items-center gap-3 text-xs text-muted">
+                            <span className="flex items-center gap-1 hover:text-red-500 transition-colors cursor-pointer">
+                              <Heart className="w-3 h-3" />
+                              {post.engagement.likes}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MessageSquare className="w-3 h-3" />
+                              {post.engagement.comments}
+                            </span>
+                          </div>
+                        </article>
+                      ))}
+                  </div>
+
+                  {/* Horizontal Posts */}
+                  <div className="space-y-4">
+                    {feedPosts
+                      .filter(post => post.layout === 'horizontal')
+                      .map(post => (
+                        <article key={post.id} className="post-card p-6 hover:border-brand-primary transition-all duration-300 group cursor-pointer shadow-lg hover:shadow-xl">
+                          <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center font-bold text-white text-sm">
+                                  {post.author.avatar}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="font-semibold text-primary text-sm">{post.author.name}</div>
+                                    {user && (
+                                      <FollowButton 
+                                        authorId={post.author.id} 
+                                        isFollowing={post.author.isFollowing || false}
+                                        onFollowChange={handleFollowChange}
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="text-secondary text-xs">{post.author.title}</div>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-2 py-1 rounded text-xs font-semibold inline-block mb-3">
+                                {post.type}
+                              </div>
+                              
+                              <h3 className="font-orbitron text-lg font-bold mb-2 group-hover:text-brand-primary transition-colors text-primary">
+                                {post.title}
+                              </h3>
+                              
+                              <p className="text-secondary text-sm mb-4">
+                                {post.excerpt}
+                              </p>
+                              
+                              <div className="flex items-center gap-4 text-xs text-muted">
+                                <span className="flex items-center gap-1 hover:text-red-500 transition-colors cursor-pointer">
+                                  <Heart className="w-3 h-3" />
+                                  {post.engagement.likes}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <MessageSquare className="w-3 h-3" />
+                                  {post.engagement.comments}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {post.engagement.time}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* RIGHT: Topics Sidebar - 1/4 width */}
+            {/* RIGHT: Topics Sidebar */}
             <div className="lg:sticky lg:top-32 lg:h-fit">
               <div className="glass-card">
                 <h3 className="font-orbitron text-xl font-bold mb-6 text-primary">Topics</h3>
@@ -605,7 +845,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Newsletter Footer Section - Full Width */}
+      {/* Newsletter Footer Section */}
       <section className="bg-gradient-to-r from-blue-600 via-purple-600 to-green-500 py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h3 className="font-orbitron text-3xl font-bold text-white mb-4">Join The Reboot</h3>

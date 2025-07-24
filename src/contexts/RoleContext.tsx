@@ -1,76 +1,136 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
+import { useAuth } from './AuthContext'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types/supabase'
-
-type UserRole = 'contributor' | 'reader'
 
 interface RoleContextType {
-  role: UserRole | null
+  role: string | null
+  isContributor: boolean
+  isReader: boolean
+  isAdmin: boolean
   isVerified: boolean
-  isLoading: boolean
-  refreshRole: () => Promise<void>
+  loading: boolean
+  isLoading: boolean // Add this for compatibility
 }
 
-const RoleContext = createContext<RoleContextType | undefined>(undefined)
+const RoleContext = createContext<RoleContextType>({
+  role: null,
+  isContributor: false,
+  isReader: false,
+  isAdmin: false,
+  isVerified: false,
+  loading: true,
+  isLoading: true
+})
 
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<UserRole | null>(null)
-  const [isVerified, setIsVerified] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClientComponentClient<Database>()
+  const { user } = useAuth()
+  const [roleData, setRoleData] = useState<RoleContextType>({
+    role: null,
+    isContributor: false,
+    isReader: false,
+    isAdmin: false,
+    isVerified: false,
+    loading: true,
+    isLoading: true
+  })
+  
+  const supabase = createClientComponentClient()
 
-  const refreshRole = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setRole(null)
-        setIsVerified(false)
+  useEffect(() => {
+    const fetchRole = async () => {
+      if (!user) {
+        console.log('No user, setting default role data')
+        setRoleData({
+          role: null,
+          isContributor: false,
+          isReader: false,
+          isAdmin: false,
+          isVerified: false,
+          loading: false,
+          isLoading: false
+        })
         return
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('user_role, is_verified')
-        .eq('id', session.user.id)
-        .single()
+      try {
+        console.log('Fetching role for user:', user.id)
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('user_role, is_admin, is_verified')
+          .eq('id', user.id)
+          .single()
 
-      if (profile) {
-        setRole(profile.user_role)
-        setIsVerified(profile.is_verified)
+        console.log('Role fetch result:', { data, error, userId: user.id })
+
+        if (error) {
+          console.error('Error fetching role:', error)
+          throw error
+        }
+
+        const role = data?.user_role || 'reader'
+        const isAdmin = data?.is_admin || false
+        
+        // FIXED: Admins are also considered contributors
+        const isContributor = role === 'contributor' || isAdmin || user.email === 'romomahmoud@gmail.com'
+        
+        const newRoleData = {
+          role,
+          isContributor,
+          isReader: role === 'reader' && !isAdmin,
+          isAdmin,
+          isVerified: data?.is_verified || false,
+          loading: false,
+          isLoading: false
+        }
+        
+        console.log('Setting role data:', newRoleData)
+        setRoleData(newRoleData)
+      } catch (error) {
+        console.error('Error in role fetch, setting default role:', error)
+        
+        // FIXED: If it's your admin email, give admin/contributor access even if DB fails
+        if (user.email === 'romomahmoud@gmail.com') {
+          setRoleData({
+            role: 'contributor',
+            isContributor: true,
+            isReader: false,
+            isAdmin: true,
+            isVerified: true,
+            loading: false,
+            isLoading: false
+          })
+        } else {
+          setRoleData({
+            role: 'reader',
+            isContributor: false,
+            isReader: true,
+            isAdmin: false,
+            isVerified: false,
+            loading: false,
+            isLoading: false
+          })
+        }
       }
-    } catch (error) {
-      console.error('Error refreshing role:', error)
-    } finally {
-      setIsLoading(false)
     }
-  }
 
-  useEffect(() => {
-    refreshRole()
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      refreshRole()
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
+    // Set loading state before fetching
+    setRoleData(prev => ({ ...prev, loading: true, isLoading: true }))
+    fetchRole()
+  }, [user, supabase])
 
   return (
-    <RoleContext.Provider value={{ role, isVerified, isLoading, refreshRole }}>
+    <RoleContext.Provider value={roleData}>
       {children}
     </RoleContext.Provider>
   )
 }
 
-export function useRole() {
+export const useRole = () => {
   const context = useContext(RoleContext)
-  if (context === undefined) {
-    throw new Error('useRole must be used within a RoleProvider')
+  if (!context) {
+    throw new Error('useRole must be used within RoleProvider')
   }
   return context
-} 
+}

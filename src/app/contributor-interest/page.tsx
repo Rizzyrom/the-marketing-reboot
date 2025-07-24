@@ -1,248 +1,298 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import ExclusiveHeader from '@/components/ExclusiveHeader'
-import ParticleSystem from '@/components/brand/ParticleSystem'
-import { ArrowLeft, CheckCircle, Sparkles, Users, TrendingUp, Award, Zap } from 'lucide-react'
+import ParticleSystem from '@/components/ParticleSystem'
+import { ArrowRight, CheckCircle, Zap, Users, FileText, Award } from 'lucide-react'
 
-export default function ApplyPage() {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    company: '',
-    jobTitle: '',
-    linkedin: '',
-    website: '',
-    experience: '',
-    whyJoin: '',
-    contribution: ''
-  })
-  
+const expertiseOptions = [
+  'Brand Strategy',
+  'Growth Marketing',
+  'Content Marketing',
+  'Performance Marketing',
+  'SEO & Organic',
+  'Social Media',
+  'Email Marketing',
+  'Product Marketing',
+  'B2B Marketing',
+  'B2C Marketing',
+  'Marketing Analytics',
+  'Creative Direction',
+  'Marketing Operations',
+  'Community Building',
+  'Influencer Marketing',
+  'AI & Marketing Tech'
+]
+
+export default function ContributorApplyPage() {
+  const router = useRouter()
+  const supabase = createClientComponentClient()
+  const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
-  
-  const handleSubmit = (e: React.FormEvent) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    fullName: '',
+    bio: '',
+    linkedinUrl: '',
+    portfolioUrl: '',
+    yearsExperience: '',
+    expertiseAreas: [] as string[]
+  })
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, this would submit to your backend
-    setSubmitted(true)
+    setLoading(true)
+
+    try {
+      const { error } = await supabase
+        .from('contributor_applications')
+        .insert({
+          email: formData.email,
+          full_name: formData.fullName,
+          bio: formData.bio,
+          linkedin_url: formData.linkedinUrl || null,
+          portfolio_url: formData.portfolioUrl || null,
+          years_experience: parseInt(formData.yearsExperience) || 0,
+          expertise_areas: formData.expertiseAreas
+        })
+
+      if (error) throw error
+
+      setSubmitted(true)
+    } catch (error) {
+      console.error('Error submitting application:', error)
+      alert('Failed to submit application. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
-  
+
+  const toggleExpertise = (area: string) => {
+    setFormData(prev => ({
+      ...prev,
+      expertiseAreas: prev.expertiseAreas.includes(area)
+        ? prev.expertiseAreas.filter(a => a !== area)
+        : [...prev.expertiseAreas, area]
+    }))
+  }
+
   if (submitted) {
     return (
-      <main className="min-h-screen bg-primary">
-        <ParticleSystem />
+      <div className="min-h-screen bg-primary">
         <ExclusiveHeader />
-        <div className="pt-32 flex items-center justify-center min-h-[80vh]">
-          <div className="text-center max-w-2xl mx-auto px-4 relative z-10">
-            <CheckCircle className="w-20 h-20 text-brand-tertiary mx-auto mb-6 animate-bounce" />
-            <h1 className="font-orbitron text-4xl font-bold mb-4 gradient-text">Application Received!</h1>
-            <p className="text-xl text-secondary mb-8">
-              Thank you for applying to The Marketing Reboot. We'll review your application and get back to you within 48 hours.
+        <ParticleSystem />
+        
+        <div className="container mx-auto px-4 py-24">
+          <div className="max-w-2xl mx-auto glass-card p-12 text-center">
+            <div className="mb-6">
+              <CheckCircle className="w-20 h-20 mx-auto text-green-500" />
+            </div>
+            <h1 className="text-3xl font-bold mb-4 text-primary">Application Submitted!</h1>
+            <p className="text-secondary mb-8 text-lg">
+              Thank you for applying to become a contributor. We'll review your application 
+              and get back to you within 3-5 business days.
             </p>
-            <Link href="/" className="btn-primary">
+            <button
+              onClick={() => router.push('/')}
+              className="btn-primary inline-flex items-center gap-2"
+            >
               Return Home
-            </Link>
+              <ArrowRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
-      </main>
+      </div>
     )
   }
-  
+
   return (
-    <main className="min-h-screen bg-primary">
-      <ParticleSystem />
+    <div className="min-h-screen bg-primary">
       <ExclusiveHeader />
+      <ParticleSystem />
       
-      <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Back Link */}
-          <Link href="/" className="inline-flex items-center gap-2 text-secondary hover:text-primary mb-8 group">
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            Back to Home
-          </Link>
-          
-          {/* Page Header */}
-          <div className="mb-12">
-            <h1 className="font-orbitron text-4xl sm:text-5xl font-bold mb-4">
-              Apply for <span className="gradient-text">Exclusive Access</span>
-            </h1>
-            <p className="text-xl text-secondary">
-              Join the community of marketing leaders who are redefining the industry. 
-              We carefully review each application to maintain our high standards.
-            </p>
-          </div>
+      <div className="container mx-auto px-4 py-24">
+        {/* Hero Section */}
+        <div className="max-w-4xl mx-auto mb-12 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 gradient-text">
+            Join The Marketing Reboot
+          </h1>
+          <p className="text-xl text-secondary mb-8">
+            Share your expertise with a community of elite marketing professionals
+          </p>
           
           {/* Benefits */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            <div className="glass-card hover:border-brand-primary/30 transition-all duration-300 transform hover:scale-105">
-              <Users className="w-8 h-8 text-brand-primary mb-3" />
-              <h3 className="font-semibold text-lg mb-2 text-primary">Connect with Leaders</h3>
-              <p className="text-secondary text-sm">
-                Network with CMOs, VPs, and senior marketers from top companies.
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div className="glass-card p-6">
+              <Users className="w-12 h-12 mx-auto mb-4 text-brand-primary" />
+              <h3 className="font-semibold mb-2 text-primary">Exclusive Community</h3>
+              <p className="text-sm text-secondary">
+                Connect with top marketing leaders and innovators
               </p>
             </div>
-            <div className="glass-card hover:border-brand-tertiary/30 transition-all duration-300 transform hover:scale-105">
-              <TrendingUp className="w-8 h-8 text-brand-tertiary mb-3" />
-              <h3 className="font-semibold text-lg mb-2 text-primary">Share Real Strategies</h3>
-              <p className="text-secondary text-sm">
-                Contribute case studies and tactics that actually drive results.
+            <div className="glass-card p-6">
+              <Award className="w-12 h-12 mx-auto mb-4 text-brand-tertiary" />
+              <h3 className="font-semibold mb-2 text-primary">Verified Status</h3>
+              <p className="text-sm text-secondary">
+                Get recognized as a verified industry expert
               </p>
             </div>
-            <div className="glass-card hover:border-brand-secondary/30 transition-all duration-300 transform hover:scale-105">
-              <Award className="w-8 h-8 text-brand-secondary mb-3" />
-              <h3 className="font-semibold text-lg mb-2 text-primary">Build Your Reputation</h3>
-              <p className="text-secondary text-sm">
-                Establish yourself as a thought leader in modern marketing.
+            <div className="glass-card p-6">
+              <FileText className="w-12 h-12 mx-auto mb-4 text-green-500" />
+              <h3 className="font-semibold mb-2 text-primary">Share Knowledge</h3>
+              <p className="text-sm text-secondary">
+                Publish insights that shape the future of marketing
               </p>
             </div>
-            <div className="glass-card hover:border-green-500/30 transition-all duration-300 transform hover:scale-105">
-              <Zap className="w-8 h-8 text-green-500 mb-3" />
-              <h3 className="font-semibold text-lg mb-2 text-primary">Early Access</h3>
-              <p className="text-secondary text-sm">
-                Get first look at new strategies and exclusive community features.
-              </p>
-            </div>
-          </div>
-          
-          {/* Application Form */}
-          <form onSubmit={handleSubmit} className="glass-card">
-            <h2 className="font-orbitron text-2xl font-bold mb-6 text-primary">Application Form</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-primary">Full Name *</label>
-                <input
-                  type="text"
-                  name="fullName"
-                  required
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-secondary border surface-border rounded-lg text-primary focus:border-brand-primary focus:outline-none transition-colors placeholder-muted"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-primary">Email *</label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-secondary border surface-border rounded-lg text-primary focus:border-brand-primary focus:outline-none transition-colors placeholder-muted"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-primary">Company *</label>
-                <input
-                  type="text"
-                  name="company"
-                  required
-                  value={formData.company}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-secondary border surface-border rounded-lg text-primary focus:border-brand-primary focus:outline-none transition-colors placeholder-muted"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-primary">Job Title *</label>
-                <input
-                  type="text"
-                  name="jobTitle"
-                  required
-                  value={formData.jobTitle}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-secondary border surface-border rounded-lg text-primary focus:border-brand-primary focus:outline-none transition-colors placeholder-muted"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-primary">LinkedIn Profile</label>
-                <input
-                  type="url"
-                  name="linkedin"
-                  value={formData.linkedin}
-                  onChange={handleChange}
-                  placeholder="https://linkedin.com/in/..."
-                  className="w-full p-3 bg-secondary border surface-border rounded-lg text-primary focus:border-brand-primary focus:outline-none transition-colors placeholder-muted"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-primary">Personal Website</label>
-                <input
-                  type="url"
-                  name="website"
-                  value={formData.website}
-                  onChange={handleChange}
-                  placeholder="https://..."
-                  className="w-full p-3 bg-secondary border surface-border rounded-lg text-primary focus:border-brand-primary focus:outline-none transition-colors placeholder-muted"
-                />
-              </div>
-            </div>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-semibold mb-2 text-primary">Marketing Experience *</label>
-              <textarea
-                name="experience"
-                required
-                rows={4}
-                value={formData.experience}
-                onChange={handleChange}
-                placeholder="Tell us about your marketing background and key achievements..."
-                className="w-full p-3 bg-secondary border surface-border rounded-lg text-primary focus:border-brand-primary focus:outline-none transition-colors placeholder-muted"
-              />
-            </div>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-semibold mb-2 text-primary">Why do you want to join The Marketing Reboot? *</label>
-              <textarea
-                name="whyJoin"
-                required
-                rows={4}
-                value={formData.whyJoin}
-                onChange={handleChange}
-                placeholder="What excites you about our community?"
-                className="w-full p-3 bg-secondary border surface-border rounded-lg text-primary focus:border-brand-primary focus:outline-none transition-colors placeholder-muted"
-              />
-            </div>
-            
-            <div className="mb-8">
-              <label className="block text-sm font-semibold mb-2 text-primary">How will you contribute to the community? *</label>
-              <textarea
-                name="contribution"
-                required
-                rows={4}
-                value={formData.contribution}
-                onChange={handleChange}
-                placeholder="What unique insights or strategies can you share?"
-                className="w-full p-3 bg-secondary border surface-border rounded-lg text-primary focus:border-brand-primary focus:outline-none transition-colors placeholder-muted"
-              />
-            </div>
-            
-            <button type="submit" className="w-full btn-primary">
-              Submit Application
-            </button>
-          </form>
-          
-          {/* Note */}
-          <div className="mt-8 text-center text-secondary text-sm">
-            <p>
-              We review applications within 48 hours. Only qualified marketing professionals 
-              with proven experience will be accepted to maintain community quality.
-            </p>
           </div>
         </div>
-      </section>
-    </main>
+
+        {/* Application Form */}
+        <div className="max-w-2xl mx-auto">
+          <form onSubmit={handleSubmit} className="glass-card p-8 space-y-6">
+            <h2 className="text-2xl font-bold mb-6 text-primary">Contributor Application</h2>
+            
+            {/* Basic Info */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-secondary">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.fullName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                  className="w-full px-4 py-2 bg-surface-secondary border border-surface-border rounded-lg focus:outline-none focus:border-brand-primary text-primary"
+                  placeholder="Sarah Chen"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-secondary">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full px-4 py-2 bg-surface-secondary border border-surface-border rounded-lg focus:outline-none focus:border-brand-primary text-primary"
+                  placeholder="sarah@company.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-secondary">
+                  Professional Bio *
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={formData.bio}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                  className="w-full px-4 py-2 bg-surface-secondary border border-surface-border rounded-lg focus:outline-none focus:border-brand-primary text-primary"
+                  placeholder="Tell us about your marketing experience and expertise..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-secondary">
+                  Years of Experience *
+                </label>
+                <select
+                  required
+                  value={formData.yearsExperience}
+                  onChange={(e) => setFormData(prev => ({ ...prev, yearsExperience: e.target.value }))}
+                  className="w-full px-4 py-2 bg-surface-secondary border border-surface-border rounded-lg focus:outline-none focus:border-brand-primary text-primary"
+                >
+                  <option value="">Select experience</option>
+                  <option value="1">1-3 years</option>
+                  <option value="4">4-6 years</option>
+                  <option value="7">7-10 years</option>
+                  <option value="11">11-15 years</option>
+                  <option value="16">15+ years</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-secondary">
+                  LinkedIn Profile
+                </label>
+                <input
+                  type="url"
+                  value={formData.linkedinUrl}
+                  onChange={(e) => setFormData(prev => ({ ...prev, linkedinUrl: e.target.value }))}
+                  className="w-full px-4 py-2 bg-surface-secondary border border-surface-border rounded-lg focus:outline-none focus:border-brand-primary text-primary"
+                  placeholder="https://linkedin.com/in/yourprofile"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-secondary">
+                  Portfolio/Website
+                </label>
+                <input
+                  type="url"
+                  value={formData.portfolioUrl}
+                  onChange={(e) => setFormData(prev => ({ ...prev, portfolioUrl: e.target.value }))}
+                  className="w-full px-4 py-2 bg-surface-secondary border border-surface-border rounded-lg focus:outline-none focus:border-brand-primary text-primary"
+                  placeholder="https://yourwebsite.com"
+                />
+              </div>
+            </div>
+
+            {/* Expertise Areas */}
+            <div>
+              <label className="block text-sm font-medium mb-3 text-secondary">
+                Areas of Expertise * (Select all that apply)
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {expertiseOptions.map(area => (
+                  <button
+                    key={area}
+                    type="button"
+                    onClick={() => toggleExpertise(area)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      formData.expertiseAreas.includes(area)
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                        : 'bg-surface-secondary hover:bg-surface-hover text-secondary'
+                    }`}
+                  >
+                    {area}
+                  </button>
+                ))}
+              </div>
+              {formData.expertiseAreas.length === 0 && (
+                <p className="text-xs text-red-500 mt-2">Please select at least one area of expertise</p>
+              )}
+            </div>
+
+            {/* Submit */}
+            <div className="pt-6">
+              <button
+                type="submit"
+                disabled={loading || formData.expertiseAreas.length === 0}
+                className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span>Submitting...</span>
+                ) : (
+                  <>
+                    <Zap className="w-5 h-5" />
+                    Submit Application
+                  </>
+                )}
+              </button>
+            </div>
+
+            <p className="text-sm text-secondary text-center">
+              By applying, you agree to our community guidelines and content standards.
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
   )
 }

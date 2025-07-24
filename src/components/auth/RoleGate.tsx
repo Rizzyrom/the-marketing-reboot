@@ -11,7 +11,7 @@ interface RoleGateProps {
 export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
   const { role } = useRole()
 
-  if (!role || !allowedRoles.includes(role)) {
+  if (!role || !allowedRoles.includes(role as 'contributor' | 'reader')) {
     return null
   }
 

@@ -1,143 +1,119 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useTheme } from '@/contexts/ThemeContext'
+import { useEffect, useRef } from 'react'
 
 interface Particle {
   x: number
   y: number
-  vx: number
-  vy: number
   size: number
-  color: string
+  speedX: number
+  speedY: number
   opacity: number
+  color: string
 }
 
 export default function ParticleSystem() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { theme } = useTheme()
-  const [isInitialized, setIsInitialized] = useState(false)
-  const particles = useRef<Particle[]>([])
-  const animationFrameId = useRef<number>()
+  const particlesRef = useRef<Particle[]>([])
+  const animationFrameRef = useRef<number>()
 
-  const createParticles = (count: number, width: number, height: number): Particle[] => {
-    return Array.from({ length: count }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      size: Math.random() * 2 + 1,
-      color: theme === 'dark' ? '#ffffff' : '#000000',
-      opacity: Math.random() * 0.5 + 0.1
-    }))
-  }
-
-  const initialize = () => {
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Set canvas size
     const resizeCanvas = () => {
-      const dpr = window.devicePixelRatio || 1
-      const rect = canvas.getBoundingClientRect()
-      canvas.width = rect.width * dpr
-      canvas.height = rect.height * dpr
-      ctx.scale(dpr, dpr)
-      canvas.style.width = `${rect.width}px`
-      canvas.style.height = `${rect.height}px`
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
     }
 
-    resizeCanvas()
-    const particleCount = Math.min(50, Math.floor(window.innerWidth / 20))
-    particles.current = createParticles(particleCount, canvas.width, canvas.height)
+    // Initialize particles
+    const initParticles = () => {
+      const particles: Particle[] = []
+      const particleCount = Math.floor((canvas.width * canvas.height) / 15000)
 
+      const colors = [
+        '#3B82F6', // Smart Blue
+        '#8B5CF6', // Vivid Purple
+        '#10B981', // Sophisticated Green
+        '#6366F1', // Brand Purple
+        '#60A5FA', // Brand Blue Light
+      ]
+
+      for (let i = 0; i < particleCount; i++) {
+        const color = colors[Math.floor(Math.random() * colors.length)]
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 2 + 0.5,
+          speedX: (Math.random() - 0.5) * 0.5,
+          speedY: (Math.random() - 0.5) * 0.5,
+          opacity: Math.random() * 0.5 + 0.1,
+          color
+        })
+      }
+
+      particlesRef.current = particles
+    }
+
+    // Animation loop
     const animate = () => {
       if (!ctx || !canvas) return
 
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      // Update and draw particles
-      particles.current.forEach(particle => {
-        particle.x += particle.vx
-        particle.y += particle.vy
+      particlesRef.current.forEach(particle => {
+        // Update position
+        particle.x += particle.speedX
+        particle.y += particle.speedY
 
-        // Bounce off edges
-        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1
-        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1
+        // Wrap around edges
+        if (particle.x < 0) particle.x = canvas.width
+        if (particle.x > canvas.width) particle.x = 0
+        if (particle.y < 0) particle.y = canvas.height
+        if (particle.y > canvas.height) particle.y = 0
 
         // Draw particle
         ctx.beginPath()
         ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
         ctx.fillStyle = `${particle.color}${Math.floor(particle.opacity * 255).toString(16).padStart(2, '0')}`
         ctx.fill()
-
-        // Draw connections
-        particles.current.forEach(otherParticle => {
-          if (particle === otherParticle) return
-
-          const dx = particle.x - otherParticle.x
-          const dy = particle.y - otherParticle.y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-
-          if (distance < 100) {
-            ctx.beginPath()
-            ctx.moveTo(particle.x, particle.y)
-            ctx.lineTo(otherParticle.x, otherParticle.y)
-            ctx.strokeStyle = `${particle.color}${Math.floor((1 - distance / 100) * 0.2 * 255).toString(16).padStart(2, '0')}`
-            ctx.stroke()
-          }
-        })
       })
 
-      animationFrameId.current = requestAnimationFrame(animate)
+      animationFrameRef.current = requestAnimationFrame(animate)
     }
 
+    // Handle resize
+    const handleResize = () => {
+      resizeCanvas()
+      initParticles()
+    }
+
+    // Initialize
+    resizeCanvas()
+    initParticles()
     animate()
-    setIsInitialized(true)
-  }
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      initialize()
+    // Event listeners
+    window.addEventListener('resize', handleResize)
 
-      const handleResize = () => {
-        if (canvasRef.current) {
-          const canvas = canvasRef.current
-          const ctx = canvas.getContext('2d')
-          if (!ctx) return
-
-          const dpr = window.devicePixelRatio || 1
-          const rect = canvas.getBoundingClientRect()
-          canvas.width = rect.width * dpr
-          canvas.height = rect.height * dpr
-          ctx.scale(dpr, dpr)
-          canvas.style.width = `${rect.width}px`
-          canvas.style.height = `${rect.height}px`
-
-          const particleCount = Math.min(50, Math.floor(window.innerWidth / 20))
-          particles.current = createParticles(particleCount, canvas.width, canvas.height)
-        }
-      }
-
-      window.addEventListener('resize', handleResize)
-      return () => {
-        window.removeEventListener('resize', handleResize)
-        if (animationFrameId.current) {
-          cancelAnimationFrame(animationFrameId.current)
-        }
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [theme])
-
-  if (!isInitialized) return null
+  }, [])
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 w-full h-full pointer-events-none z-0"
-      style={{ opacity: 0.5 }}
+      className="fixed top-0 left-0 w-full h-full pointer-events-none z-0"
+      style={{ opacity: 0.3 }}
     />
   )
 } 

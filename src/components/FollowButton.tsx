@@ -1,73 +1,143 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types/supabase'
 import { UserPlus, UserMinus } from 'lucide-react'
 
 interface FollowButtonProps {
   contributorId: string
-  isFollowing: boolean
-  onFollowChange: (isFollowing: boolean) => void
+  initialIsFollowing?: boolean
+  onFollowChange?: (isFollowing: boolean) => void
+  showIcon?: boolean
+  size?: 'sm' | 'md' | 'lg'
+  variant?: 'primary' | 'secondary'
+  className?: string
 }
 
-export default function FollowButton({ contributorId, isFollowing, onFollowChange }: FollowButtonProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const supabase = createClientComponentClient<Database>()
+export default function FollowButton({
+  contributorId,
+  initialIsFollowing = false,
+  onFollowChange,
+  showIcon = true,
+  size = 'sm',
+  variant = 'primary',
+  className = ''
+}: FollowButtonProps) {
+  const { user } = useAuth()
+  const router = useRouter()
+  const supabase = createClientComponentClient()
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
+  const [loading, setLoading] = useState(false)
 
-  const handleFollow = async () => {
-    setIsLoading(true)
+  // Check if user is following this contributor
+  useEffect(() => {
+    const checkFollowing = async () => {
+      if (!user || !contributorId) return
+      
+      try {
+        const { data } = await supabase
+          .from('follows')
+          .select('id')
+          .eq('follower_id', user.id)
+          .eq('following_id', contributorId)
+          .single()
+        
+        setIsFollowing(!!data)
+      } catch (error) {
+        // Not following if no record found
+        setIsFollowing(false)
+      }
+    }
+    
+    checkFollowing()
+  }, [user, contributorId, supabase])
 
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    
+    if (!user) {
+      router.push('/auth/login')
+      return
+    }
+
+    setLoading(true)
+    
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not authenticated')
-
       if (isFollowing) {
-        const { error } = await supabase
+        // Unfollow
+        await supabase
           .from('follows')
           .delete()
-          .eq('follower_id', session.user.id)
-          .eq('contributor_id', contributorId)
-
-        if (error) throw error
+          .eq('follower_id', user.id)
+          .eq('following_id', contributorId)
       } else {
-        const { error } = await supabase
+        // Follow
+        await supabase
           .from('follows')
-          .insert([{
-            follower_id: session.user.id,
-            contributor_id: contributorId
-          }])
-
-        if (error) throw error
+          .insert({
+            follower_id: user.id,
+            following_id: contributorId
+          })
       }
-
-      onFollowChange(!isFollowing)
+      
+      const newFollowState = !isFollowing
+      setIsFollowing(newFollowState)
+      onFollowChange?.(newFollowState)
+      
     } catch (error) {
       console.error('Error toggling follow:', error)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
+  }
+
+  // Size classes
+  const sizeClasses = {
+    sm: 'px-3 py-1 text-xs',
+    md: 'px-4 py-2 text-sm',
+    lg: 'px-6 py-3 text-base'
+  }
+
+  // Variant classes
+  const variantClasses = {
+    primary: isFollowing 
+      ? 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300' 
+      : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700',
+    secondary: isFollowing
+      ? 'bg-surface-secondary hover:bg-surface-hover text-secondary'
+      : 'bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary'
   }
 
   return (
     <button
-      onClick={handleFollow}
-      disabled={isLoading}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-        isFollowing ? 'bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]' : 'bg-[var(--accent-primary)] hover:bg-[var(--accent-secondary)] text-white'
-      }`}
+      onClick={handleClick}
+      disabled={loading}
+      className={`
+        ${sizeClasses[size]}
+        ${variantClasses[variant]}
+        rounded-full font-medium transition-all
+        disabled:opacity-50 disabled:cursor-not-allowed
+        inline-flex items-center gap-1
+        ${className}
+      `}
     >
-      {isFollowing ? (
-        <>
-          <UserMinus className="w-4 h-4" />
-          Unfollow
-        </>
+      {loading ? (
+        <span>...</span>
       ) : (
         <>
-          <UserPlus className="w-4 h-4" />
-          Follow
+          {showIcon && (
+            isFollowing ? (
+              <UserMinus className={`${size === 'sm' ? 'w-3 h-3' : size === 'md' ? 'w-4 h-4' : 'w-5 h-5'}`} />
+            ) : (
+              <UserPlus className={`${size === 'sm' ? 'w-3 h-3' : size === 'md' ? 'w-4 h-4' : 'w-5 h-5'}`} />
+            )
+          )}
+          {isFollowing ? 'Following' : 'Follow'}
         </>
       )}
     </button>
   )
-} 
+}

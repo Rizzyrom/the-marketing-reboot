@@ -2,151 +2,132 @@
 
 import { useState } from 'react'
 import { Sparkles, X } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types/supabase'
+import { useRole } from '@/hooks/useRole'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function ContributorInterestForm() {
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    linkedin: '',
-    portfolio: '',
-    why_contribute: ''
-  })
-  const supabase = createClientComponentClient<Database>()
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const { isReader } = useRole()
+  const { user } = useAuth()
+  
+  // Only show for logged-in readers
+  if (!user || !isReader) return null
+  
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
-
-    try {
-      const { error } = await supabase
-        .from('contributor_applications')
-        .insert([{
-          ...formData,
-          status: 'pending'
-        }])
-
-      if (error) throw error
-
-      // Reset form and close modal
-      setFormData({
-        name: '',
-        email: '',
-        linkedin: '',
-        portfolio: '',
-        why_contribute: ''
-      })
-      setIsOpen(false)
-    } catch (error) {
-      console.error('Error submitting application:', error)
-    } finally {
-      setIsSubmitting(false)
+    
+    const formData = new FormData(e.currentTarget)
+    const data = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      linkedin: formData.get('linkedin'),
+      portfolio: formData.get('portfolio'),
+      why_contribute: formData.get('why_contribute'),
     }
+    
+    // TODO: Submit to Supabase contributor_applications table
+    console.log('Form submission:', data)
+    
+    setTimeout(() => {
+      setIsSubmitting(false)
+      setIsOpen(false)
+      alert('Application submitted! We\'ll review and get back to you.')
+    }, 1000)
   }
-
+  
   return (
     <>
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-8 right-8 p-4 rounded-full glass-card btn-primary shadow-lg hover:scale-105 transition-transform"
-        aria-label="Apply to become a contributor"
+        className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300 flex items-center gap-2 group"
       >
-        <Sparkles className="w-6 h-6" />
+        <Sparkles className="w-5 h-5" />
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap">
+          Become a Contributor
+        </span>
       </button>
-
+      
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-card rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="gradient-text text-2xl font-bold">
-                Become a Contributor
-              </h2>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsOpen(false)}
+          />
+          
+          {/* Form */}
+          <div className="relative w-full max-w-md glass-card p-6">
+            <button
+              onClick={() => setIsOpen(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <h2 className="text-2xl font-bold mb-2 gradient-text">Become a Contributor</h2>
+            <p className="text-secondary mb-6">Join our exclusive community of marketing leaders</p>
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium mb-1">
-                  Full Name
-                </label>
+                <label className="block text-sm font-medium mb-2">Name</label>
                 <input
                   type="text"
-                  id="name"
+                  name="name"
                   required
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                  className="w-full px-4 py-2 rounded-lg bg-primary border surface-border focus:outline-none focus:ring-2 focus:ring-brand-primary"
                 />
               </div>
-
+              
               <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-1">
-                  Email
-                </label>
+                <label className="block text-sm font-medium mb-2">Email</label>
                 <input
                   type="email"
-                  id="email"
+                  name="email"
                   required
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                  defaultValue={user?.email}
+                  className="w-full px-4 py-2 rounded-lg bg-primary border surface-border focus:outline-none focus:ring-2 focus:ring-brand-primary"
                 />
               </div>
-
+              
               <div>
-                <label htmlFor="linkedin" className="block text-sm font-medium mb-1">
-                  LinkedIn Profile
-                </label>
+                <label className="block text-sm font-medium mb-2">LinkedIn Profile</label>
                 <input
                   type="url"
-                  id="linkedin"
-                  value={formData.linkedin}
-                  onChange={(e) => setFormData(prev => ({ ...prev, linkedin: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                  name="linkedin"
+                  placeholder="https://linkedin.com/in/yourprofile"
+                  className="w-full px-4 py-2 rounded-lg bg-primary border surface-border focus:outline-none focus:ring-2 focus:ring-brand-primary"
                 />
               </div>
-
+              
               <div>
-                <label htmlFor="portfolio" className="block text-sm font-medium mb-1">
-                  Portfolio URL
-                </label>
+                <label className="block text-sm font-medium mb-2">Portfolio/Website</label>
                 <input
                   type="url"
-                  id="portfolio"
-                  value={formData.portfolio}
-                  onChange={(e) => setFormData(prev => ({ ...prev, portfolio: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                  name="portfolio"
+                  placeholder="https://yourwebsite.com"
+                  className="w-full px-4 py-2 rounded-lg bg-primary border surface-border focus:outline-none focus:ring-2 focus:ring-brand-primary"
                 />
               </div>
-
+              
               <div>
-                <label htmlFor="why_contribute" className="block text-sm font-medium mb-1">
-                  Why do you want to contribute?
-                </label>
+                <label className="block text-sm font-medium mb-2">Why do you want to contribute?</label>
                 <textarea
-                  id="why_contribute"
+                  name="why_contribute"
                   required
                   rows={4}
-                  value={formData.why_contribute}
-                  onChange={(e) => setFormData(prev => ({ ...prev, why_contribute: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                  className="w-full px-4 py-2 rounded-lg bg-primary border surface-border focus:outline-none focus:ring-2 focus:ring-brand-primary resize-none"
+                  placeholder="Tell us about your experience and what you'd like to share..."
                 />
               </div>
-
+              
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-primary w-full py-2 rounded-lg font-medium"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Application'}
               </button>

@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { safeLogin } from '@/utils/auth-helpers'
+import { useAuth } from '@/contexts/AuthContext'
 import ClientOnly from '@/components/ClientOnly'
 import ParticleSystem from '@/components/brand/ParticleSystem'
-import Logo from '@/components/brand/Logo'
 import { Eye, EyeOff, Sparkles, Zap } from 'lucide-react'
 
 export default function LoginPage() {
@@ -16,23 +15,18 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const { login } = useAuth()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const { data, error } = await safeLogin(email, password)
-    
-    if (error) {
+    try {
+      await login(email, password)
+    } catch (error: any) {
       setError(error.message)
       setLoading(false)
-      return
-    }
-
-    if (data) {
-      // Use window.location for more reliable redirect
-      window.location.href = '/dashboard'
     }
   }
 
@@ -43,16 +37,32 @@ export default function LoginPage() {
 
         <div className="w-full max-w-md relative z-10">
           <div className="glass-card hover:border-brand-primary/30 transition-all duration-500">
-            {/* Logo */}
+            {/* Animated Logo */}
             <div className="text-center mb-8">
-              <div className="mb-4">
-                <Logo size="medium" showText={true} animated={true} className="justify-center" />
+              <div className="mb-4 flex justify-center">
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-pulse">
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="url(#lightning-gradient)" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <defs>
+                        <linearGradient id="lightning-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#3B82F6" />
+                          <stop offset="100%" stopColor="#10B981" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-medium tracking-wide text-[var(--text-secondary)]">THE</span>
+                    <span className="text-xl font-bold tracking-tight gradient-text">MARKETING REBOOT</span>
+                  </div>
+                </div>
               </div>
               <h1 className="font-orbitron text-3xl font-bold mb-2 gradient-text">Welcome Back</h1>
               <p className="text-secondary">Ready to continue your reboot?</p>
             </div>
 
-            {/* Form */}
+            {/* Form - REST OF YOUR FORM CODE STAYS THE SAME */}
             <form onSubmit={handleLogin} className="space-y-6">
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-sm backdrop-blur animate-pulse">
@@ -110,11 +120,11 @@ export default function LoginPage() {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Signing In...
+                    Logging In...
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    Sign In
+                    Log In
                     <Zap className="w-4 h-4" />
                   </span>
                 )}
@@ -138,7 +148,7 @@ export default function LoginPage() {
               <p className="text-secondary">
                 Don't have an account?{' '}
                 <Link href="/auth/signup" className="text-brand-primary hover:text-brand-secondary font-semibold transition-colors">
-                  Join the reboot
+                  Sign Up
                 </Link>
               </p>
               <div className="mt-4">

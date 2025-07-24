@@ -190,15 +190,14 @@ export default function ResourcesPage() {
       <ExclusiveHeader />
       
       {/* Hero Section */}
-      <section className="pt-32 pb-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-8">
-            <h1 className="font-orbitron text-4xl sm:text-5xl font-bold mb-4 gradient-text">
+      <section className="relative pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl sm:text-4xl font-bold mb-4 gradient-text leading-relaxed">
               Marketing Resources
             </h1>
             <p className="text-xl text-secondary max-w-3xl mx-auto">
-              Battle-tested templates, tools, and guides from marketing leaders. 
-              Skip the theory—download what actually works.
+              Tools, guides, and insights to elevate your marketing game
             </p>
           </div>
           

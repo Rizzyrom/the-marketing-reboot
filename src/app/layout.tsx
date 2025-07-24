@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { RoleProvider } from '@/contexts/RoleContext'
+import ParticleSystem from '@/components/ParticleSystem'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,7 +21,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Theme initialization script to prevent flash */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -29,14 +30,12 @@ export default function RootLayout({
                   if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
                   } else {
-                    // Default to light mode
                     document.documentElement.classList.remove('dark');
                     if (!theme) {
                       localStorage.setItem('theme', 'light');
                     }
                   }
                 } catch (e) {
-                  // Default to light mode if localStorage is not available
                   document.documentElement.classList.remove('dark');
                 }
               })();
@@ -44,10 +43,13 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-screen bg-primary overflow-x-hidden`}>
         <ThemeProvider>
           <AuthProvider>
-            {children}
+            <RoleProvider>
+              <ParticleSystem />
+              {children}
+            </RoleProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
